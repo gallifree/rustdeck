@@ -1,0 +1,22 @@
+[package]
+name    = "rustdeck-gui"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "rustdeck"
+path = "src/main.rs"
+
+[dependencies]
+rustdeck-core = { path = "../core" }
+tokio.workspace  = true
+anyhow.workspace = true
+log.workspace    = true
+image.workspace  = true
+
+eframe     = "0.29"
+egui       = "0.29"
+env_logger = "0.11"
+toml       = "0.8"

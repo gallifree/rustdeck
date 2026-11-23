@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = ["crates/core", "crates/gui", "crates/tui", "tools/probe"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["Cyril Lepagnot"]
+license = "GPL-3.0-or-later"
+
+[workspace.dependencies]
+tokio      = { version = "1", features = ["full"] }
+serde      = { version = "1", features = ["derive"] }
+anyhow     = "1"
+log        = "0.4"
+image      = { version = "0.25", default-features = false, features = ["png", "jpeg", "bmp"] }
+elgato-streamdeck = { version = "0.14", default-features = false, features = ["async"] }
+hidapi     = "2.6"
+mirajazz   = "0.9"

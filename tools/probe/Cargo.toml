@@ -1,0 +1,16 @@
+[package]
+name    = "rustdeck-probe"
+publish = false
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "rustdeck-probe"
+path = "src/main.rs"
+
+[dependencies]
+mirajazz = "0.9"
+image    = { version = "0.25", default-features = false, features = ["jpeg", "bmp", "png"] }
+tokio    = { version = "1", features = ["full"] }

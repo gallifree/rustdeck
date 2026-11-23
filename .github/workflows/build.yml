@@ -1,0 +1,85 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test (core + devtools)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install system libraries
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libudev-dev
+      - run: cargo test --locked -p rustdeck-core
+      # Dev tool is not shipped, but must keep compiling.
+      - run: cargo check --locked -p rustdeck-probe
+
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux x86_64,   os: ubuntu-24.04,     target: x86_64-unknown-linux-gnu }
+          - { name: Linux arm64,    os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu }
+          - { name: Windows x86_64, os: windows-latest,   target: x86_64-pc-windows-msvc }
+          - { name: Windows arm64,  os: windows-latest,   target: aarch64-pc-windows-msvc }
+          - { name: macOS Intel,    os: macos-latest,     target: x86_64-apple-darwin }
+          - { name: macOS Apple Silicon, os: macos-latest, target: aarch64-apple-darwin }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install system libraries (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libudev-dev libxkbcommon-dev \
+            libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+
+      - name: Build GUI + TUI
+        run: cargo build --release --locked --target ${{ matrix.target }} -p rustdeck-gui -p rustdeck-tui
+
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          dir=rustdeck-${{ matrix.target }}
+          mkdir "$dir"
+          cp target/${{ matrix.target }}/release/rustdeck target/${{ matrix.target }}/release/rustdeck-tui "$dir/"
+          tar czf "$dir.tar.gz" "$dir"
+          echo "ASSET=$dir.tar.gz" >> "$GITHUB_ENV"
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $dir = "rustdeck-${{ matrix.target }}"
+          New-Item -ItemType Directory $dir | Out-Null
+          Copy-Item target/${{ matrix.target }}/release/rustdeck.exe, target/${{ matrix.target }}/release/rustdeck-tui.exe $dir
+          Compress-Archive -Path $dir -DestinationPath "$dir.zip"
+          "ASSET=$dir.zip" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rustdeck-${{ matrix.target }}
+          path: ${{ env.ASSET }}
+          if-no-files-found: error
